@@ -3,6 +3,15 @@ const fs = require('fs')
 const http = require('http')
 const path = require('path')
 
+// 搜索内容
+// http://user.bookan.com.cn/index.php?op=Search.searchList&resourceType=1&keyword=英语学习&instanceId=1477&pageNum=1&limitNum=18
+// 获取图片信息
+// http://user.bookan.com.cn/index.php?op=Resource.issueInfoList&instanceId=1477&resourceType=1&issueIds=472447
+// 获取图片hash
+//Request URL: http://user.bookan.com.cn/index.php?op=Resource.getHash&resourceType=1&resourceId=7062&issueId=472447&start=1&end=52
+// 获取书签
+//http://user.bookan.com.cn/index.php?op=Resource.catalogInfo&resourceType=1&categoryId=472447&statusType=1
+
 fs.readdirSync('input').forEach(async inputfile=>{
 	console.log('process', inputfile)
 	let inputfilepath = path.join('input', inputfile)
