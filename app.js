@@ -1,8 +1,11 @@
 const {execSync} = require ('child_process')
 const fs = require('fs')
-const http = require('http')
 const path = require('path')
+const request = require('request-promise')
+const util = require('util')
+const mkpdf = require('./mkpdf')
 
+// 音乐爱好者，英语学习，科幻世界，南风窗
 // 搜索内容
 // http://user.bookan.com.cn/index.php?op=Search.searchList&resourceType=1&keyword=英语学习&instanceId=1477&pageNum=1&limitNum=18
 // 获取图片信息
@@ -12,31 +15,135 @@ const path = require('path')
 // 获取书签
 //http://user.bookan.com.cn/index.php?op=Resource.catalogInfo&resourceType=1&categoryId=472447&statusType=1
 
-fs.readdirSync('input').forEach(async inputfile=>{
-	console.log('process', inputfile)
-	let inputfilepath = path.join('input', inputfile)
-	let text = fs.readFileSync(inputfilepath).toString()
-	//<img data-v-0046d8d1="" data-src="//img-qn.bookan.com.cn/jpage5/8330/8330-474472/8c9967ab_big.jpg" class="swiper-lazy">
-	let list = text.match(/src="([^"]+.jpg)"/g)
-	//<h1 class="mint-header-title">英语学习·中英文版</h1>
-	let bookname = text.match(/<h1 class="mint-header-title">([^<]+)<\/h1>/)
-	console.log(bookname[1])
-	let dir = 'output/'+bookname[1]
+process.stdin.on('readable', oncmd)
+
+let url = 'http://user.bookan.com.cn/index.php'
+let qs = {
+	op: 'Search.searchList',
+	resourceType: 1,
+	keyword: '英语学习',
+	instanceId: 1477,
+	pageNum: 1,
+	limitNum: 18,
+}
+
+
+async function oncmd() {
+	process.stdin.resume()
+	let chunk = process.stdin.read()
+	if (chunk == null) {
+		return
+	}
+	let data = chunk.toString().trim()
+	let cmd_args = data.split(" ")
+	if (cmd_args.length == 0) {
+		return
+	}
+	let cmd = cmd_args[0]
+	if (cmd.length == 0)
+		return
+	if (cmd == 's'){
+		qs.op = 'Search.searchList'
+		qs.keyword = cmd_args[1]
+	}
+	else if (cmd == 'i'){
+		qs.op = 'Resource.issueInfoList'
+		qs.issueIds = cmd_args[1]
+	}
+	else if (cmd == 'c'){
+		qs.op = 'Resource.catalogInfo'
+		qs.categoryId = cmd_args[1]
+	}
+	else if (cmd == 'd'){
+		download(cmd_args[1])
+		return
+	}
+	else {
+		qs.op = 'Search.searchList'
+		qs.keyword = cmd
+	}
+
+	let r = await request.get({url, qs})
+	console.log(cmd, r)
+}
+
+async function download(issue_id){
+	qs.op = 'Resource.issueInfoList'
+	qs.issueIds = issue_id
+	let r = await request.get({url, qs})
+	if (r.status == 1) {
+		console.log(r)
+		return
+	}
+	let issue_info = JSON.parse(r).data[0]
+	// fs.writeFileSync(`output/${issue_id}_issue.json`, r.data)
+
+	qs.op = 'Resource.catalogInfo'
+	qs.categoryId = issue_id
+	r = await request.get({url, qs})
+	let catalog = JSON.parse(r).data
+	// console.log(catalog)
+	// fs.writeFileSync(`output/${issue_id}_catalog.json`, r.data)
+
+	qs.op = 'Resource.getHash'
+	qs.issueId = issue_id
+	qs.resourceId = issue_info.resourceId
+	qs.start = 1
+	qs.end = issue_info.count
+	r = await request.get({url, qs})
+	let hashlist = JSON.parse(r).data
+	// fs.writeFileSync(`output/${issue_id}_hash.json`, r.data)
+
+	let dir = 'output/'+issue_info.resourceName+'_'+issue_info.issueName
 	if (!fs.existsSync(dir))
 		fs.mkdirSync(dir)
 
-	list.forEach(async (item, id)=>{
-		id = id + 1
-		let r = item.match(/src="([^"]+)"/)
-		let url = 'http:'+r[1]
-		let fn = path.join(dir, (id<10?'0':'')+id+'.jpg')
-		let user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.130 Safari/537.36'
+
+	hashlist.forEach(item=>{
+		let url = getImgPath(issue_info, item.hash)
+		let fn = path.join(dir, (item.page<10?'0':'')+item.page+'.jpg')
 		console.log(url, ">>", fn)
-		try{
-			execSync(`curl -s -A "${user_agent}" -o ${fn} ${url}`)
-		}
-		catch (e){
-			console.error('error', e)
-		}
+		let user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.130 Safari/537.36'
+		execSync(`curl -s -A "${user_agent}" -o ${fn} ${url}`)
 	})
-})
+	console.log(dir, 'done!')
+	
+	mkpdf.mkone(issue_info, dir, catalog)
+}
+
+function getImgPath(e, t) {
+	let PAGE_SERVER = 'http://img-qn.bookan.com.cn'
+    return PAGE_SERVER + "/jpage" + e.jpg + "/" + e.resourceId + "/" + e.resourceId + "-" + e.issueId + "/" + t + "_big.jpg"
+}
+
+function processtxt() {
+	fs.readdirSync('input').forEach(async inputfile=>{
+		console.log('process', inputfile)
+		let inputfilepath = path.join('input', inputfile)
+		let text = fs.readFileSync(inputfilepath).toString()
+		//<img data-v-0046d8d1="" data-src="//img-qn.bookan.com.cn/jpage5/8330/8330-474472/8c9967ab_big.jpg" class="swiper-lazy">
+		let list = text.match(/src="([^"]+.jpg)"/g)
+		//<h1 class="mint-header-title">英语学习·中英文版</h1>
+		let bookname = text.match(/<h1 class="mint-header-title">([^<]+)<\/h1>/)
+		console.log(bookname[1])
+		let dir = 'output/'+bookname[1]
+		if (!fs.existsSync(dir))
+			fs.mkdirSync(dir)
+
+		list.forEach(async (item, id)=>{
+			id = id + 1
+			let r = item.match(/src="([^"]+)"/)
+			let url = 'http:'+r[1]
+			let fn = path.join(dir, (id<10?'0':'')+id+'.jpg')
+			let user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.130 Safari/537.36'
+			console.log(url, ">>", fn)
+			try{
+				execSync(`curl -s -A "${user_agent}" -o ${fn} ${url}`)
+			}
+			catch (e){
+				console.error('error', e)
+			}
+		})
+	})
+}
+
