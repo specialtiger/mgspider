@@ -42,8 +42,11 @@ async function oncmd() {
 	let cmd = cmd_args[0]
 	if (cmd.length == 0)
 		return
+	qs.resourceType = 1
+
 	if (cmd == 's'){
 		qs.op = 'Search.searchList'
+		qs.resourceType = 1
 		qs.keyword = cmd_args[1]
 	}
 	else if (cmd == 'i'){
@@ -58,9 +61,15 @@ async function oncmd() {
 		download(cmd_args[1])
 		return
 	}
+	else if (cmd == 'b'){
+		qs.op = 'Search.searchList'
+		qs.resourceType = 3
+		qs.keyword = cmd_args[1]
+	}
 	else {
 		qs.op = 'Search.searchList'
-		qs.keyword = cmd
+		qs.resourceType = 1
+		qs.keyword = cmd_args[1]
 	}
 
 	let r = await request.get({url, qs})
@@ -94,7 +103,9 @@ async function download(issue_id){
 	let hashlist = JSON.parse(r).data
 	// fs.writeFileSync(`output/${issue_id}_hash.json`, r.data)
 
-	let dir = 'output/'+issue_info.resourceName+'_'+issue_info.issueName
+	let dir = 'output/'+issue_info.resourceName
+	if (issue_info.issueName && issue_info.issueName.length > 0)
+		dir+=issue_info.issueName
 	if (!fs.existsSync(dir))
 		fs.mkdirSync(dir)
 
