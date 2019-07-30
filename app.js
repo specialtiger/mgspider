@@ -24,7 +24,7 @@ let qs = {
 	keyword: '英语学习',
 	instanceId: 1477,
 	pageNum: 1,
-	limitNum: 18,
+	limitNum: 100,
 }
 
 
@@ -69,11 +69,26 @@ async function oncmd() {
 	else {
 		qs.op = 'Search.searchList'
 		qs.resourceType = 1
-		qs.keyword = cmd_args[1]
+		qs.keyword = cmd
 	}
 
 	let r = await request.get({url, qs})
-	console.log(cmd, r)
+	if (qs.op == 'Search.searchList' && r){
+		let content =  JSON.parse(r)
+		content.data.sort((a, b)=>{
+			if (a.issueId < b.issueId) 
+				return 1
+			if (a.issueId > b.issueId) 
+				return -1
+			return 0
+		})
+		content.data.forEach(item=>{
+			console.log(item.issueId, item.resourceName, item.issueName, item.publish)
+		})
+	}
+	else{
+		console.log(r)
+	}
 }
 
 async function download(issue_id){
