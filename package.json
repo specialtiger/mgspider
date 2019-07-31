@@ -1,0 +1,25 @@
+{
+  "name": "mgspider",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "pdfkit": "^0.10.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/specialtiger/mgspider.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/specialtiger/mgspider/issues"
+  },
+  "homepage": "https://github.com/specialtiger/mgspider#readme"
+}

@@ -58,7 +58,7 @@ async function oncmd() {
 		qs.categoryId = cmd_args[1]
 	}
 	else if (cmd == 'd'){
-		download(cmd_args[1])
+		download(cmd_args[1], cmd_args[2])
 		return
 	}
 	else if (cmd == 'b'){
@@ -91,7 +91,7 @@ async function oncmd() {
 	}
 }
 
-async function download(issue_id){
+async function download(issue_id, newname){
 	qs.op = 'Resource.issueInfoList'
 	qs.issueIds = issue_id
 	let r = await request.get({url, qs})
@@ -118,7 +118,7 @@ async function download(issue_id){
 	let hashlist = JSON.parse(r).data
 	// fs.writeFileSync(`output/${issue_id}_hash.json`, r.data)
 
-	let dir = 'output/'+issue_info.resourceName
+	let dir = 'output/'+(newname?newname:issue_info.resourceName)
 	if (issue_info.issueName && issue_info.issueName.length > 0)
 		dir+=issue_info.issueName
 	if (!fs.existsSync(dir))
